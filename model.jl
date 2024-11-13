@@ -31,7 +31,7 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     for j in J
         @constraint(model, v[j] == sum(A[i, j] * y[i] for i in I))
         @constraint(model, x[j] <= u[j] + v[j])
-        @constraint(model, u[j] + v[j] <=1)
+        @constraint(model, u[j] + v[j] <=1.0)
 
     end
 
@@ -43,13 +43,22 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # 4.  Flow conservation constraints
     for k in 1:M
         for h in N
-            @constraint(model, sum(z[i, h, k] for i in N) - sum(z[j, h, k] for j in N) == 0)
+            @constraint(model, sum(z[i, h, k] for i in N) - sum(z[h, j, k] for j in N) == 0.0)
         end
     end
 
     # 5. Capacity constraints for MMTs
     for k in 1:M
         @constraint(model, sum(q[j] * z[i,j,k] for j in J, i in N) <= Q)
+    end
+
+    # 5.5. Avoid double arrows
+    for i in N
+        for j in N
+            for k in 1:M
+                @constraint(model, z[i,j,k]+z[j,i,k] <= 1)
+            end
+        end
     end
 
     # 6. Coverage and MMT-VC relationships
@@ -128,7 +137,7 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # 4.  Flow conservation constraints
     for k in 1:M
         for h in N
-            @constraint(model, sum(z[i, h, k] for i in N) - sum(z[j, h, k] for j in N) == 0)
+            @constraint(model, sum(z[i, h, k] for i in N) - sum(z[h, j, k] for j in N) == 0)
         end
     end
 
