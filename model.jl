@@ -12,7 +12,6 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # Creation of the variables
     
     @variable(model, y[i in I], Bin)
-    @variable(model, x[j in J], Bin)
     @variable(model, u[j in J], Bin)
     @variable(model, v[j in J], Bin)
     @variable(model, z[i in N, j in N, k in 1:M], Bin)
@@ -21,8 +20,7 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     
 
     # Objective function
-
-    @objective(model, Max, sum(q[j] * x[j] for j in J))
+    @objective(model, Max, sum(q[j] * (u[j] + v[j]) for j in J))
 
     # Constraints
 
@@ -30,18 +28,14 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     ## SUBTOUR ELIMINATION CONSTRAINTS---------------
     @variable(model, beta[i in N], Int)
 
-    for i in I
-        @constraint(model, beta[i+n] == y[i])
-    end
-
     for j in J
-        @constraint(model, beta[j] >= 2)
-        @constraint(model, beta[j] <= n)
+        @constraint(model, beta[j] >= q[j])
+        @constraint(model, beta[j] <= Q)
     end
 
     for k in 1:M, i in N, j in J
         if i != j
-            @constraint(model, beta[i] - beta[j] + (n-1)*z[i,j,k] <= n-2)
+            @constraint(model, beta[i] - beta[j] >=  q[j] - (1-z[i,j,k]) * Q)
         end
     end
 
@@ -53,7 +47,6 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # 2. Coverage and locality vaccination relationships
     for j in J
         @constraint(model, v[j] == sum(A[i, j] * y[i] for i in I))
-        @constraint(model, x[j] <= u[j] + v[j])
         @constraint(model, u[j] + v[j] <=1.0)
     end
 
@@ -70,9 +63,9 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     end
 
     # 5. Capacity constraints for MMTs
-    for k in 1:M
-        @constraint(model, sum(q[j] * z[i,j,k] for j in J, i in N) <= Q)
-    end
+    # for k in 1:M
+    #     @constraint(model, sum(q[j] * z[i,j,k] for j in J, i in N) <= Q)
+    # end
 
     # 5.5. Avoid double arrows
     for i in N, k in 1:M            
@@ -98,15 +91,11 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
 
     # 9. Enforced coverage for specific localities
     for j in J_prime
-        @constraint(model, x[j] == 1)
+        @constraint(model, u[j] + v[j] == 1)
     end
 
     # 10. Budget constraint
     @constraint(model, (sum(z[i,j,k]*D[i,j] for k in 1:M, i in N, j in N)) + (sum(delta[k] for k in 1:M) * p) + sum(y[i] * f[i] for i in I) <= B)
-
-
-    # 11. Total MMT limit
-    @constraint(model, sum(delta[k] for k in 1:M) <= M)
 
     optimize!(model)
 
@@ -214,12 +203,6 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # 10. Budget constraint
     @constraint(model, (sum(z[i,j,k]*D[i,j] for k in 1:M, i in N, j in N)) + (sum(delta[k] for k in 1:M) * p) + sum(y[i] * f[i] for i in I) <= B)
 
-
-    # 11. Total MMT limit
-    @constraint(model, sum(delta[k] for k in 1:M) <= M)
-    # 12. Additionnal constraints on the number of MMTs
-    
-    @constraint(model, sum(delta[k] for k in 1:M) >= sum(u[j]*q[j]/Q for j in J))
 
     optimize!(model)
 
