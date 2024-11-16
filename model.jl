@@ -1,5 +1,6 @@
 using JuMP
 using HiGHS
+using LinearAlgebra
 
 function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64, 2}, Q::Int64, C::Vector{Int64}, q::Vector{Int64}, f::Vector{Int64}, p::Int64, B::Float64, R::Vector{Float64}, J_prime::Vector{Int64}, M::Int64)
     I = 1:m
@@ -11,11 +12,11 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # Variables
     @variable(model, y[I], Bin)
     @variable(model, u[J], Bin)
-    @variable(model, v[J], Bin)
+    #@variable(model, v[J], Bin)
     @variable(model, z[N, N, 1:M], Bin)
     @variable(model, delta[1:M], Bin)
     @variable(model, beta[N], Int)
-
+    @expression(model, v[j in J], dot(A[I, j], y[I]))
     #Expression to avoid multiple computations
     @expression(model, sum_uq, sum(u .* q))
 
@@ -34,7 +35,7 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     @constraint(model, sum(y) == 1)
 
     # Coverage and locality vaccination relationships
-    @constraint(model, [j in J], v[j] == sum(A[i, j] * y[i] for i in I))
+    #@constraint(model, [j in J], v[j] == sum(A[i, j] * y[i] for i in I))
     @constraint(model, u .+ v .<= 1.0)
 
     # Routing constraints
@@ -84,11 +85,11 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # Variables
     @variable(model, y[I], Bin)
     @variable(model, u[J], Bin)
-    @variable(model, v[J], Bin)
+    #@variable(model, v[J], Bin)
     @variable(model, z[N, N, 1:M], Bin)
     @variable(model, delta[1:M], Bin)
     @variable(model, beta[N], Int)
-
+    @expression(model, v[j in J], dot(A[I, j], y[I]))
     #Expression to avoid multiple computations
     @expression(model, sum_uq, sum(u .* q))
 
@@ -107,7 +108,7 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     @constraint(model, sum(y) == 1)
 
     # Coverage and locality vaccination relationships
-    @constraint(model, [j in J], v[j] == sum(A[i, j] * y[i] for i in I))
+    #@constraint(model, [j in J], v[j] == sum(A[i, j] * y[i] for i in I))
     @constraint(model, u .+ v .<= 1.0)
 
     # Routing constraints
