@@ -12,7 +12,6 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # Variables
     @variable(model, y[I], Bin)
     @variable(model, u[J], Bin)
-    #@variable(model, v[J], Bin)
     @variable(model, z[N, N, 1:M], Bin)
     @variable(model, delta[1:M], Bin)
     @variable(model, beta[N], Int)
@@ -26,16 +25,16 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     # Constraints
 
     # Subtour elimination constraints
-    @constraint(model, beta[J] .>= q)
-    @constraint(model, beta[J] .<= Q)
+    @constraint(model, beta_low[J] , beta[J] .>= q)
+    @constraint(model, beta_high[J], beta[J] .<= Q)
+
     valid_pairs = [(i, j) for i in N, j in J if i != j]
-    @constraint(model, [k = 1:M, (i, j) in valid_pairs], beta[i] - beta[j] >= q[j] - (1 - z[i, j, k]) * Q)
+    @constraint(model, [k = 1:M, (i, j) in valid_pairs], beta[j] - beta[i] >= q[j] - (1 - z[i, j, k]) * Q)
 
     # Total VC locations must equal 1
     @constraint(model, sum(y) == 1)
 
     # Coverage and locality vaccination relationships
-    #@constraint(model, [j in J], v[j] == sum(A[i, j] * y[i] for i in I))
     @constraint(model, u .+ v .<= 1.0)
 
     # Routing constraints
@@ -69,7 +68,11 @@ function solve_OptVax1(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
         sum(y .* f) <= B
     )
 
-    optimize!(model)
+    # Redundant Constraints to speed up the solver
+    for k in 1:(M-1)
+        @constraint(model, delta[k] >= delta[k+1])
+    end
+
     return model
 end
 
@@ -102,7 +105,7 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     @constraint(model, beta[J] .<= Q)
     
     valid_pairs = [(i, j) for i in N, j in J if i != j]
-    @constraint(model, [k = 1:M, (i, j) in valid_pairs], beta[i] - beta[j] >= q[j] - (1 - z[i, j, k]) * Q)
+    @constraint(model, [k = 1:M, (i, j) in valid_pairs], beta[j] - beta[i] >= q[j] - (1 - z[i, j, k]) * Q)
 
     # Total VC locations must equal 1
     @constraint(model, sum(y) == 1)
@@ -146,8 +149,11 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     #Additional constraint
     @constraint(model, sum_delta >= sum_uq/Q)
 
+    # Redundant Constraints to speed up the solver
+    for k in 1:(M-1)
+        @constraint(model, delta[k] >= delta[k+1])
+    end
 
-    optimize!(model)
     return model
 end
 
@@ -160,7 +166,7 @@ function solve_OptVax2LP(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int6
     model = Model(HiGHS.Optimizer)
 
     # Variables
-    @variable(model,0 .<= y[I] .<= 1)
+    @variable(model, 0 .<= y[I] .<= 1)
     @variable(model, 0 .<= u[J] .<= 1)
     @variable(model, 0 .<= z[N, N, 1:M] .<= 1)
     @variable(model, 0 .<= delta[1:M] .<= 1)
@@ -179,7 +185,7 @@ function solve_OptVax2LP(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int6
     @constraint(model, beta[J] .<= Q)
     
     valid_pairs = [(i, j) for i in N, j in J if i != j]
-    @constraint(model, [k = 1:M, (i, j) in valid_pairs], beta[i] - beta[j] >= q[j] - (1 - z[i, j, k]) * Q)
+    @constraint(model, [k = 1:M, (i, j) in valid_pairs], beta[j] - beta[i] >= q[j] - (1 - z[i, j, k]) * Q)
 
     # Total VC locations must equal 1
     @constraint(model, sum(y) == 1)
@@ -222,7 +228,7 @@ function solve_OptVax2LP(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int6
 
     #Additional constraint
     @constraint(model, sum_delta >= sum_uq/Q)
-    optimize!(model)
+
     return model
 end
 

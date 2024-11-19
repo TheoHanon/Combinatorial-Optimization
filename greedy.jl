@@ -1,3 +1,41 @@
+using JuMP
+
+
+function local_search_2Opt(MMTs, D)
+
+    new_MMTs = deepcopy(MMTs)
+
+    for (idx, MMT_route) in enumerate(new_MMTs)
+
+        best_route = [i for (i, j) in MMT_route[2:end]] 
+        push!(best_route, MMT_route[end][2])
+
+        best_cost = sum(D[best_route[i], best_route[i+1]] for i in 1:length(best_route)-1)
+        improved = true
+
+        while improved
+            improved = false
+            for i in 2:length(best_route)-2
+                for j in i+1:length(best_route)-1
+                    new_route = deepcopy(best_route)
+                    new_route[i:j] = reverse(new_route[i:j])
+                    new_cost = sum(D[new_route[i], new_route[i+1]] for i in 1:length(new_route)-1)
+                    if new_cost < best_cost 
+                        best_route = deepcopy(new_route)
+                        best_cost = new_cost
+                        improved = true
+                    end
+                end
+            end
+        end
+
+        new_MMTs[idx] = [(best_route[i], best_route[i+1]) for i in 1:length(best_route)-1]
+        pushfirst!(new_MMTs[idx], (best_route[1], best_route[1]))
+    end
+
+    return new_MMTs
+end
+
 function greedy_MMTs(VC::Int64, n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64, 2}, Q::Int64, C::Vector{Int64}, q::Vector{Int64}, f::Vector{Int64}, p::Int64, B::Float64, J_prime::Vector{Int64}, M::Int64)
 
     MMTs = [[(VC+n, VC+n)]]
@@ -27,7 +65,7 @@ function greedy_MMTs(VC::Int64, n::Int64, m::Int64, D::Array{Float64, 2}, A::Arr
                 assigned = true
                 break
 
-            elseif (q[j] <= Q) && (Budget + D[VC+n, j] + D[j, VC+n] + p <= B) && (Q_tot + q[j] <= C[VC]) && (length(MMTs) <= M)
+            elseif (q[j] <= Q) && (Budget + D[VC+n, j] + D[j, VC+n] + p <= B) && (Q_tot + q[j] <= C[VC]) && (length(MMTs) < M)
                 push!(MMTs, [(VC+n, VC+n), (VC+n, j)])
                 push!(Q_MMTs, q[j])
                 Budget += D[VC+n, j] + p
@@ -59,6 +97,7 @@ function greedy_OptVax(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
     best_Budget = 0.0
     best_Q_MMTs = []
     best_Q_tot = 0
+    best_VC = nothing
     
     for VC in 1:m
         MMTs, Budget, Q_MMTs, Q_tot = greedy_MMTs(VC, n, m, D, A, Q, C, q, f, p, B, J_prime, M)
@@ -68,9 +107,75 @@ function greedy_OptVax(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
             best_Budget = Budget
             best_Q_MMTs = Q_MMTs
             best_Q_tot = Q_tot
+            best_VC = VC
         end
     end
 
-
-    return best_MMTs, best_Budget, best_Q_MMTs, best_Q_tot
+    return best_VC, best_MMTs, best_Budget, best_Q_MMTs, best_Q_tot
 end
+
+
+
+function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64, q::Vector{Int64}) 
+
+    I = 1:m
+    J = 1:n
+
+    z = model[:z]
+    delta = model[:delta]
+    y = model[:y]
+    u = model[:u]
+    beta = model[:beta]
+
+    # Fix VC
+    for i in I
+        set_start_value(y[i], 0)
+    end
+
+    set_start_value(y[VC], 1)
+
+    # Fix MMTs
+
+    k = length(MMTs)
+    for idx in 1:M
+        if idx <= k
+            set_start_value(delta[idx], 1)
+        else
+            set_start_value(delta[idx], 0)
+        end
+    end
+  
+    # Fix Routes
+
+    for i in 1:(n+m), j in 1:(n+m), k in 1:M
+        set_start_value(z[i, j, k], 0)
+    end
+
+    for j in J
+        set_start_value(u[j], 0)
+    end
+
+    for i in I
+        set_start_value(beta[i+n], 0)
+    end
+
+    for j in J
+        set_start_value(beta[j], q[j])
+    end
+
+    for (idx, MMT) in enumerate(MMTs)
+        Q_tot = 0
+        for (i, j) in MMT[2:end-1]
+            Q_tot += q[j]
+            set_start_value(z[i, j, idx], 1)
+            set_start_value(u[j], 1)
+            set_start_value(beta[j], Q_tot)
+        end
+        (iend, jend) = MMT[end]
+        set_start_value(z[iend, jend, idx], 1)
+    end
+
+
+end
+
+

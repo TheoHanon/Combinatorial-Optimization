@@ -125,7 +125,7 @@ function plot_solution_greedy(MMTs, x_VC, y_VC, x_loc, y_loc, R, n, m, M, locali
     θ = range(0, 2π, length=100)
     circle_x = x_VC[VC-n] .+ R[VC-n] .* cos.(θ)
     circle_y = y_VC[VC-n] .+ R[VC-n] .* sin.(θ)
-    plot!(plt, circle_x, circle_y, lw=1.5, linecolor=:red, label="", fillalpha=0.1, fillcolor=:red)
+    plot!(plt, circle_x, circle_y, lw=1.5, linecolor=:red, label="", fillalpha=0.1, fillcolor=:red, axis = nothing)
     
     
     # Create a color gradient (you can use other gradient types too)
