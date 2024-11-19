@@ -9,9 +9,8 @@ function greedy_MMTs(VC::Int64, n::Int64, m::Int64, D::Array{Float64, 2}, A::Arr
     localities_to_visit = [j for j in 1:n if A[VC, j] == 0]
     
     while true
-
-        # println("Localities to visit: ", localities_to_visit)
         
+        assigned = false
         utilities = [(q[j] / D[MMT[end][2], j], idx, j) for (idx, MMT) in enumerate(MMTs) for j in localities_to_visit if !(j in J_prime)]
         utilities_prio = [(q[j]/D[MMT[end][2], j], idx, j) for (idx, MMT) in enumerate(MMTs) for j in localities_to_visit if j in J_prime]
 
