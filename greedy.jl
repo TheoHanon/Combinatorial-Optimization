@@ -116,7 +116,7 @@ end
 
 
 
-function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64, q::Vector{Int64}) 
+function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64, A) 
 
     I = 1:m
     J = 1:n
@@ -126,6 +126,7 @@ function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64
     y = model[:y]
     u = model[:u]
     beta = model[:beta]
+    v = model[:v]
 
     # Fix VC
     for i in I
@@ -167,6 +168,10 @@ function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64
         set_start_value(beta[j], 2)
     end
 
+    for j in J
+        set_start_value(v[j], A[VC, j])
+    end
+    
     for (idx, MMT) in enumerate(MMTs)
         Q_tot = 1
         for (i, j) in MMT[2:end-1]
