@@ -116,11 +116,14 @@ end
 
 
 
-function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64, A) 
+function greedy_init(
+    model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64, A
+)
+    # Indices
+    I = 1:m  # VC locations
+    J = 1:n  # Localities
 
-    I = 1:m
-    J = 1:n
-
+    # Extract variables from the model
     z = model[:z]
     delta = model[:delta]
     y = model[:y]
@@ -128,63 +131,56 @@ function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64
     beta = model[:beta]
     v = model[:v]
 
-    # Fix VC
+    # Initialize VC locations
     for i in I
         set_start_value(y[i], 0)
     end
-
     set_start_value(y[VC], 1)
 
-    # Fix MMTs
-
-    k = length(MMTs)
+    # Initialize MMTs
+    num_MMTs = length(MMTs)
     for idx in 1:M
-        if idx <= k
-            set_start_value(delta[idx], 1)
-        else
-            set_start_value(delta[idx], 0)
-        end
+        set_start_value(delta[idx], idx <= num_MMTs ? 1 : 0)
     end
-  
-    # Fix Routes
 
-    for i in 1:(n+m), j in 1:(n+m), k in 1:M
+    # Initialize routes
+    for i in 1:(n + m), j in 1:(n + m), k in 1:M
         set_start_value(z[i, j, k], 0)
     end
 
-    for j in J
-        set_start_value(u[j], 0)
+    # Initialize MMT assignments
+    for j in J, k in 1:M
+        set_start_value(u[j, k], 0)
     end
 
+    # Initialize beta for VC locations
     for i in I
-        if i == VC
-            set_start_value(beta[i+n], 1)
-        else
-            set_start_value(beta[i+n], 0)
-        end
+        set_start_value(beta[i + n], i == VC ? 1 : 0)
     end
-    
+
+    # Initialize beta for localities
     for j in J
         set_start_value(beta[j], 2)
     end
 
+    # Initialize coverage
     for j in J
         set_start_value(v[j], A[VC, j])
     end
-    
+
+    # Set up MMT routes
     for (idx, MMT) in enumerate(MMTs)
         Q_tot = 1
         for (i, j) in MMT[2:end-1]
             Q_tot += 1
             set_start_value(z[i, j, idx], 1)
-            set_start_value(u[j], 1)
+            set_start_value(u[j, idx], 1)
             set_start_value(beta[j], Q_tot)
         end
         (iend, jend) = MMT[end]
         set_start_value(z[iend, jend, idx], 1)
     end
-
-
 end
+
 
 
