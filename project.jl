@@ -6,7 +6,7 @@ using JuMP
 using HiGHS
 
 
-n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance("Combinatorial-Optimization/Instances/coord100-5-1_processed.dat")
+n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance("Combinatorial-Optimization/Instances/coord50-5-1b_processed.dat")
 
 
 
@@ -69,12 +69,13 @@ plot_solution_greedy(MMTs, x_VC, y_VC, x_loc, y_loc, R, n, m, M, localities_with
 plot_solution_greedy(new_MMTs, x_VC, y_VC, x_loc, y_loc, R, n, m, M, localities_with_high_priorities)
 
 
-model_OptVax1 = solve_OptVax1(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M)
-greedy_init(model_OptVax1, new_MMTs, VC, M, n, m, A)
-optimize!(model_OptVax1)    
+model_OptVax = solve_OptVax2(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M)
 
-obj_val = objective_value(model_OptVax1)
+greedy_init(model_OptVax, new_MMTs, VC, M, n, m, A)
+optimize!(model_OptVax)    
+
+obj_val = objective_value(model_OptVax)
 println("Objective Value: ", obj_val)
 
 
-plot_solution(model_OptVax1, x_VC, y_VC, x_loc, y_loc, R,n,m,M, localities_with_high_priorities)
+plot_solution(model_OptVax, x_VC, y_VC, x_loc, y_loc, R,n,m,M, localities_with_high_priorities)
