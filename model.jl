@@ -37,7 +37,8 @@ function solve_OptVax1(
 
     # Subtour elimination constraints
     @constraint(model, beta_low[J], beta[J] .>= 2)
-    @constraint(model, beta_high[J], beta[J] .<= n)
+    @constraint(model, [j in J], beta[j] <= sum(u[p, l] for p in J, l in 1:M))
+    
     @constraint(model, [i in I], beta[i + n] == y[i])
     valid_pairs = [(i, j) for i in N, j in J if i != j]
     @constraint(model, [k = 1:M, (i, j) in valid_pairs], 
@@ -179,7 +180,7 @@ function solve_OptVax2LP(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int6
     N = 1:(n + m)
     
     model = Model(HiGHS.Optimizer)
-    
+
 
     # Variables
     @variable(model, 0 .<= y[I] .<= 1)

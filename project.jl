@@ -6,7 +6,7 @@ using JuMP
 using HiGHS
 
 
-n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance("Combinatorial-Optimization/Instances/coord50-5-1b_processed.dat")
+n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance("Combinatorial-Optimization/Instances/coord50-5-2_processed.dat")
 
 
 
@@ -69,7 +69,7 @@ plot_solution_greedy(MMTs, x_VC, y_VC, x_loc, y_loc, R, n, m, M, localities_with
 plot_solution_greedy(new_MMTs, x_VC, y_VC, x_loc, y_loc, R, n, m, M, localities_with_high_priorities)
 
 
-model_OptVax = solve_OptVax2(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M)
+model_OptVax = solve_OptVax1(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M)
 
 greedy_init(model_OptVax, new_MMTs, VC, M, n, m, A)
 optimize!(model_OptVax)    
