@@ -14,6 +14,7 @@ function solve_OptVax1(
 
     # Initialize model
     model = Model(HiGHS.Optimizer)
+    set_optimizer_attribute(model, "time_limit", 1800.0)
 
     # Variables
     @variable(model, y[I], Bin)                           # VC locations
@@ -37,7 +38,7 @@ function solve_OptVax1(
 
     # Subtour elimination constraints
     @constraint(model, beta_low[J], beta[J] .>= 2)
-    @constraint(model, [j in J], beta[j] <= sum(u[p, l] for p in J, l in 1:M))
+    @constraint(model, [j in J], beta[j] <= n)
     
     @constraint(model, [i in I], beta[i + n] == y[i])
     valid_pairs = [(i, j) for i in N, j in J if i != j]
@@ -96,6 +97,7 @@ function solve_OptVax2(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
 
     # Initialize model
     model = Model(HiGHS.Optimizer)
+    set_optimizer_attribute(model, "time_limit", 1800.0)
 
     # Variables
     @variable(model, y[I], Bin)                           # VC locations
@@ -180,6 +182,7 @@ function solve_OptVax2LP(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int6
     N = 1:(n + m)
     
     model = Model(HiGHS.Optimizer)
+    set_optimizer_attribute(model, "time_limit", 1800.0)
 
 
     # Variables

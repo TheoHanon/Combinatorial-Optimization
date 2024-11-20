@@ -1,5 +1,53 @@
 using Plots
 
+
+
+function preprocess(n, m, x_VC, y_VC, x_loc, y_loc, R)
+
+    distance_matrix = zeros(Float64, m, n)
+
+    for i in 1:m 
+        for j in 1:n
+            distance_matrix[i, j] = sqrt((x_VC[i] - x_loc[j])^2 + (y_VC[i] - y_loc[j])^2)
+        end
+    end
+
+    A = zeros(Int, m, n)
+
+
+    for i in 1:m
+        for j in 1:n
+            if distance_matrix[i, j] <= R[i]
+                A[i, j] = 1
+            end
+        end
+    end
+
+
+    D = zeros(Float64, n+m, n+m)
+    #The n first rows/cols of D relate to the localities, the m last to the VC
+    #In other words, calling D[i,j] for i in I, j in J corresponds to call D[i+n,j]
+    for i in 1:m+n
+        for j in 1:m+n
+            if i <= n && j <= n
+                # Both indices in `loc`
+                D[i, j] = sqrt((x_loc[i] - x_loc[j])^2 + (y_loc[i] - y_loc[j])^2)
+            elseif i > n && j > n
+                # Both indices in `VC`
+                D[i, j] = sqrt((x_VC[i - n] - x_VC[j - n])^2 + (y_VC[i - n] - y_VC[j - n])^2)
+            elseif i > n && j <= n
+                # i in `VC`, j in `loc`
+                D[i, j] = sqrt((x_VC[i - n] - x_loc[j])^2 + (y_VC[i - n] - y_loc[j])^2)
+            else
+                # i in `loc`, j in `VC`
+                D[i, j] = sqrt((x_loc[i] - x_VC[j - n])^2 + (y_loc[i] - y_VC[j - n])^2)
+            end
+        end
+    end
+
+    return A, D
+end
+
 function plot_solution(model, x_VC, y_VC, x_loc, y_loc, R, n, m, M, localities_with_high_priorities)
     # Retrieve the optimized values of y, z, and delta from the model
     y_values = value.(model[:y])
@@ -81,7 +129,7 @@ function plot_solution(model, x_VC, y_VC, x_loc, y_loc, R, n, m, M, localities_w
     end
 
     # Display the final plot
-    savefig(plt, "test.pdf")
+    # savefig(plt, "test.pdf")
     display(plt)
 end
 

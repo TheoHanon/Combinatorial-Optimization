@@ -111,6 +111,8 @@ function greedy_OptVax(n::Int64, m::Int64, D::Array{Float64, 2}, A::Array{Int64,
         end
     end
 
+    best_Q_tot += sum(A[best_VC, j]*q[j] for j in 1:n)
+
     return best_VC, best_MMTs, best_Budget, best_Q_MMTs, best_Q_tot
 end
 
