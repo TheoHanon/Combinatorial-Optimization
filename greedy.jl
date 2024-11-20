@@ -156,17 +156,21 @@ function greedy_init(model::Model, MMTs, VC::Int64, M::Int64, n::Int64, m::Int64
     end
 
     for i in I
-        set_start_value(beta[i+n], 0)
+        if i == VC
+            set_start_value(beta[i+n], 1)
+        else
+            set_start_value(beta[i+n], 0)
+        end
     end
-
+    
     for j in J
-        set_start_value(beta[j], q[j])
+        set_start_value(beta[j], 2)
     end
 
     for (idx, MMT) in enumerate(MMTs)
-        Q_tot = 0
+        Q_tot = 1
         for (i, j) in MMT[2:end-1]
-            Q_tot += q[j]
+            Q_tot += 1
             set_start_value(z[i, j, idx], 1)
             set_start_value(u[j], 1)
             set_start_value(beta[j], Q_tot)
