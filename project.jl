@@ -6,7 +6,7 @@ using JuMP
 using HiGHS
 
 
-n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance("Combinatorial-Optimization/Instances/coord50-5-1_processed.dat")
+n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance("Combinatorial-Optimization/Instances/coord100-5-1_processed.dat")
 
 
 
