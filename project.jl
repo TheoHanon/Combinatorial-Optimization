@@ -17,11 +17,11 @@ function baseline_solve(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_pr
     optimize!(model)
     termination_status = JuMP.termination_status(model)
 
-    if !(termination_status == MOI.FEASIBLE_POINT)
+    if primal_status == MOI.FEASIBLE_POINT || termination_status == MOI.OPTIMAL
+        obj_value = objective_value(model)
+    else
         obj_value = 0.0
-     else
-         obj_value = objective_value(model)
-     end
+    end
     
     return obj_value
 
@@ -47,10 +47,11 @@ function solve(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities,
 
     termination_status = JuMP.termination_status(model)
 
-    if !(termination_status == MOI.FEASIBLE_POINT)
-       obj_value = 0.0
-    else
+
+    if primal_status == MOI.FEASIBLE_POINT || termination_status == MOI.OPTIMAL
         obj_value = objective_value(model)
+    else
+        obj_value = 0.0
     end
 
     return obj_value
@@ -75,6 +76,8 @@ for i in reverse(1:length(files))
     end
 end
 
+println(files)
+
 
 z_star = zeros(length(files))
 z_tilde = zeros(6, length(files))
@@ -86,6 +89,17 @@ for (k,file) in enumerate(files)
     println("Solving instance $file")
     n, m, x_VC, y_VC, x_loc, y_loc, Q, C, q, f, p, tc, B, R, localities_with_high_priorities, M = parse_instance(joinpath(source, file))
     A, D = preprocess(n, m, x_VC, y_VC, x_loc, y_loc, R)
+
+    # Get results for model 2 with/without warm start
+    t0 = CPUtime_us()
+    z_star[k] = baseline_solve(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M)
+    t1 = CPUtime_us()
+    z_tilde[2, k] = z_star[k]
+    time[2, k] = (t1 - t0) / 1e6
+
+    println("===Base line===")
+    println("z_star: ", z_star[k])
+    
 
     # Get results for model 1 with/without warm start
 
@@ -99,18 +113,11 @@ for (k,file) in enumerate(files)
     t1 = CPUtime_us()
     time[5, k] = (t1 - t0) / 1e6
 
-    # Get results for model 2 with/without warm start
-    t0 = CPUtime_us()
-    z_star[k] = baseline_solve(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M)
-    z_tilde[2, k] = z_star[k]
-    t1 = CPUtime_us()
-    time[2, k] = (t1 - t0) / 1e6
 
     t0 = CPUtime_us()
     z_tilde[6, k] = solve(n, m, D, A, Q, C, q, f, p, B, R, localities_with_high_priorities, M, "2", true)
     t1 = CPUtime_us()
     time[6, k] = (t1 - t0) / 1e6
-
 
     # Get results for model 2LP
 
