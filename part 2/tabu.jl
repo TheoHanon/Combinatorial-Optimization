@@ -33,13 +33,13 @@ function evaluate_solution(MMTs, data)
     for route in MMTs
         for (i, j) in route
             total_cost += data.D[i, j]
-            if j <= data.n
+            if j < data.n
                 Q_tot += data.q[j]
             end
         end
     end
 
-    Q_tot += sum(data.A[VC, j] * data.q[j] for j in 1:data.n)
+    # Q_tot += sum(data.A[VC, j] * data.q[j] for j in 1:data.n)
     return total_cost - Q_tot
 end
 
@@ -241,19 +241,6 @@ function tabu_search(data::OptVaxData;
                 end
             end
         end
-
-        # Apply Greedy starting from current best solution
-        new_MMTs, _, _, _ = greedy_MMTs(best_VC, data, best_MMTs)
-        new_Q = evaluate_Q(new_MMTs, data)
-        new_cost = evaluate_solution(new_MMTs, data)
-
-        if new_cost < best_cost
-            best_cost = new_cost
-            best_Q = new_Q
-            best_MMTs = new_MMTs
-            best_solution = (best_VC, best_MMTs, best_cost, best_Q)
-            no_improve_count = 0
-        end
     end
 
     print("Is feasible: ", is_feasible(best_MMTs, data))
@@ -277,44 +264,14 @@ function greedy_MMTs(VC::Int64, data::OptVaxData, MMTs = nothing)
     J_prime = data.J_prime
     M = data.M
 
-    if isnothing(MMTs)
-        # Start with a single empty MMT containing just VC start/end
-        MMTs = [[(VC+n, VC+n)]]
-        Q_MMTs = [0.0]
-        Budget = p + f[VC]
-        Q_tot = 0
-        localities_to_visit = [j for j in 1:n if A[VC, j] == 0]
-    else
-        # Remove empty MMTs of form [(x,x)]
-        del_idx = []
-        for (idx, MMT) in enumerate(MMTs)
-            if MMT[1][1] == MMT[1][2]
-                push!(del_idx, idx)
-            end
-        end
-        for idx in reverse(del_idx)
-            deleteat!(MMTs, idx)
-        end
 
-        Q_MMTs = [sum(data.q[j] for (i,j) in route[1:end-1]) for route in MMTs]
-        Q_tot = sum(Q_MMTs) + sum(data.A[VC, j]*data.q[j] for j in 1:data.n)
-
-        MMTs = deepcopy(MMTs)
-        for MMT in MMTs
-            deleteat!(MMT, lastindex(MMT)) # Remove return to VC for the construction phase
-        end
-
-        Budget = length(MMTs)*p + f[VC] + sum(D[i,j] for route in MMTs for (i,j) in route)
-        localities_to_visit = [j for j in 1:n if A[VC,j] == 0]
-
-        # Remove already visited localities
-        for route in MMTs
-            node_seq = extract_node_seq(route)
-            for i in 2:(length(node_seq)-1)
-                deleteat!(localities_to_visit, findfirst(==(node_seq[i]), localities_to_visit))
-            end
-        end
-    end
+    # Start with a single empty MMT containing just VC start/end
+    MMTs = [[(VC+n, VC+n)]]
+    Q_MMTs = [0.0]
+    Budget = p + f[VC]
+    Q_tot = 0
+    localities_to_visit = [j for j in 1:n if A[VC, j] == 0]
+    
 
     # Assign localities to routes based on a greedy heuristic
     while true
@@ -375,9 +332,8 @@ function greedy_MMTs(VC::Int64, data::OptVaxData, MMTs = nothing)
         push!(MMT, (MMT[end][2], VC+n))
         if MMT[1] == (VC+n, VC+n)
             deleteat!(MMT, 1)
-        elseif MMT[end] == (VC+n, VC+n)
-            deleteat!(MMT, lastindex(MMT))
         end
+        
         Budget += D[MMT[end][2], VC+n]
     end
 
@@ -408,3 +364,4 @@ function greedy_OptVax(data::OptVaxData)
     best_Q_tot += sum(data.A[best_VC, j] * data.q[j] for j in 1:data.n)
     return best_VC, best_MMTs
 end
+
