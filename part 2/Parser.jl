@@ -169,7 +169,7 @@ function parse_to_struct(path::String)
     A, D = preprocess(n, m, x_VC, y_VC, x_loc, y_loc, R)
 
 
-    return OptVaxData(n, m, D, A, Q, C, q, f, p, B, localities_with_high_priorities, M)
+    return OptVaxData(n, m, D, A, Q, C, q, f, p, B, localities_with_high_priorities, M), x_VC, y_VC, x_loc, y_loc, R
 
 end
 

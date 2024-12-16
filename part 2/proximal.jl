@@ -1,5 +1,7 @@
 include("model.jl")
 using JuMP
+using LinearAlgebra
+using ProgressMeter
 
 function proximal_gradient_descent(
                                 z_lower::Float64,
@@ -8,19 +10,32 @@ function proximal_gradient_descent(
 
     # Unpack data
 
+    Q = data.Q
+    q = data.q
+
+
     M = data.M
     m = data.m
     n = data.n
+    N = 1:(n + m)
+    J = 1:n
+
     valid_pairs = [(i, j) for i in N, j in J if i != j]
 
-    u_subtours = zeros(m, n, M)
-    u_capacities = zeros(M)
-    u = [u_subtours; u_capacities]
+    u_subtours = ones(m+n, n, M)
+    u_capacities = ones(M)
+    u = [vec(u_subtours); u_capacities]
 
-    g_subtours = zeros(m, n, M)
+    g_subtours = zeros(m+n, n, M)
     g_capacities = zeros(M)
+
+    p = Progress(max_iter, desc = "Proximal gradient descent")
+
+    z_dual = Inf
     
-    for _ in 1:max_iter
+    for k in 1:max_iter
+
+        next!(p)
 
         # Solve the dual problem
         model = OptVax_Dual(u_subtours, u_capacities, data)
@@ -32,7 +47,7 @@ function proximal_gradient_descent(
         # Compute the gradient
         
         for (i, j) in valid_pairs, k in 1:M
-            g_subtours[i, j, l] = (n - 2) - (beta[i] - beta[j] + (n - 1) * z[i, j, k])
+            g_subtours[i, j, k] = (n - 2) - (beta[i] - beta[j] + (n - 1) * z[i, j, k])
         end
 
         for k in 1:M
@@ -47,10 +62,9 @@ function proximal_gradient_descent(
 
         # Update the variables
 
-        u = max(0, u + alpha * g)
-        u_subtours = reshape(u[1:(m * n * M)], m, n, M)
-        u_capacities = u[(m * n * M + 1):end]
-
+        u = max.(0, u - alpha * g)
+        u_subtours = reshape(u[1:((m+n) * n * M)], m+n, n, M)
+        u_capacities = u[((m+n) * n * M + 1):end]
     end
 
     return z_dual

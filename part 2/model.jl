@@ -1,6 +1,5 @@
 using JuMP
 using HiGHS
-
 struct OptVaxData
     n::Int64
     m::Int64
@@ -18,7 +17,7 @@ end
 
 
 function OptVax_Dual(
-                    u_subtours::Vector{Float64}, 
+                    u_subtours::Array{Float64, 3}, 
                     u_capacities::Vector{Float64},
                     data::OptVaxData
                     )
@@ -45,6 +44,7 @@ function OptVax_Dual(
     
         # Initialize model
         model = Model(HiGHS.Optimizer)
+        set_silent(model)
         
         # Variables
         @variable(model, y[I], Bin)                           # VC locations
@@ -59,14 +59,14 @@ function OptVax_Dual(
         ############################
         
         valid_pairs = [(i, j) for i in N, j in J if i != j]
-        @expression(model, subtours, sum(u_subtours[i, j, l] * ((n - 2) - ( beta[i] - beta[j] + (n - 1) * z[i, j, k])) for k = 1:M, (i, j) in valid_pairs))
+        @expression(model, subtours, sum(u_subtours[i, j, k] * ((n - 2) - ( beta[i] - beta[j] + (n - 1) * z[i, j, k])) for k = 1:M, (i, j) in valid_pairs))
         @expression(model, capacities, sum( u_capacities[k] * (Q - sum(q[j] * z[i, j, k] for j in J, i in N)) for k in 1:M))
         @expression(model, sum_uq, sum(sum(u[:, k] for k in 1:M) .* q))
 
         @objective(model, Max, sum_uq + sum(q .* v) + subtours + capacities)
 
         ############################
-        #   Constraints            #
+        #        Constraints       #
         ############################
 
 
@@ -138,9 +138,6 @@ function OptVax(data::OptVaxData)
     J_prime = data.J_prime
     M = data.M
     
-
-
-
 
     # Indices
     I = 1:m  # VC locations
