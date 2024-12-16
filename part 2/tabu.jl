@@ -40,7 +40,7 @@ function evaluate_solution(MMTs, data)
     end
 
     # Q_tot += sum(data.A[VC, j] * data.q[j] for j in 1:data.n)
-    return - Q_tot
+    return total_cost - Q_tot
 end
 
 # --------------------------------------------------------------------------
@@ -258,8 +258,7 @@ function tabu_search(data::OptVaxData;
             
             
         end
-        println("Cost", best_cost)
-
+    
     end
 
     print("Is feasible: ", is_feasible(best_MMTs, data))
