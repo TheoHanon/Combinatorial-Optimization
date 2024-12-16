@@ -227,7 +227,6 @@ function tabu_search(data::OptVaxData;
             # Add move to tabu list
             add_to_tabu_list(tabu_list, best_move, tabu_tenure)
 
-            # Update global best if improved
             if current_cost < best_cost
                 best_cost = current_cost
                 best_Q = current_Q
@@ -240,7 +239,9 @@ function tabu_search(data::OptVaxData;
                     break
                 end
             end
+            
         end
+
     end
 
     print("Is feasible: ", is_feasible(best_MMTs, data))
@@ -364,4 +365,5 @@ function greedy_OptVax(data::OptVaxData)
     best_Q_tot += sum(data.A[best_VC, j] * data.q[j] for j in 1:data.n)
     return best_VC, best_MMTs
 end
+
 
