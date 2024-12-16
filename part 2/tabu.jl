@@ -40,7 +40,7 @@ function evaluate_solution(MMTs, data)
     end
 
     # Q_tot += sum(data.A[VC, j] * data.q[j] for j in 1:data.n)
-    return total_cost - Q_tot
+    return - Q_tot
 end
 
 # --------------------------------------------------------------------------
@@ -228,11 +228,27 @@ function tabu_search(data::OptVaxData;
             add_to_tabu_list(tabu_list, best_move, tabu_tenure)
 
             if current_cost < best_cost
+                # Update best solution
                 best_cost = current_cost
                 best_Q = current_Q
                 best_MMTs = current_MMTs
                 best_solution = (best_VC, best_MMTs, best_cost, best_Q)
                 no_improve_count = 0
+            
+                # Attempt to reinsert unvisited localities for further improvement
+                try_reinsert_unvisited!(current_MMTs, data)
+            
+                # Re-evaluate the current solution after reinsertion attempts
+                improved_cost = evaluate_solution(current_MMTs, data)
+                improved_Q = evaluate_Q(current_MMTs, data)
+            
+                # If reinsertion improved solution further, update best solution again
+                if improved_cost < best_cost
+                    best_cost = improved_cost
+                    best_Q = improved_Q
+                    best_MMTs = deepcopy(current_MMTs)
+                    best_solution = (best_VC, best_MMTs, best_cost, best_Q)
+                end
             else
                 no_improve_count += 1
                 if no_improve_count > no_improve_limit
@@ -240,7 +256,9 @@ function tabu_search(data::OptVaxData;
                 end
             end
             
+            
         end
+        println("Cost", best_cost)
 
     end
 
@@ -367,3 +385,95 @@ function greedy_OptVax(data::OptVaxData)
 end
 
 
+function try_reinsert_unvisited!(MMTs, data)
+    # Extract needed data
+    n = data.n
+    D = data.D
+    q = data.q
+    p = data.p
+    f = data.f
+    Q = data.Q
+    C = data.C
+    B = data.B
+    A = data.A
+
+    # Determine VC from the current MMTs configuration
+    # First route's first tuple is (VC+n, VC+n)
+    VC = MMTs[1][1][1] - n
+
+    # Identify visited localities
+    visited_localities = Set{Int}()
+    for route in MMTs
+        node_seq = extract_node_seq(route)
+        # localities are from positions 2 to end-1
+        for i in 2:(length(node_seq)-1)
+            push!(visited_localities, node_seq[i])
+        end
+    end
+
+    # Identify unvisited localities: 
+    # Those that are not assigned to VC (A[VC,j]==0) and not in visited_localities
+    unvisited_localities = [j for j in 1:n if A[VC, j] == 0 && !(j in visited_localities)]
+
+    # Compute current budget and load per route to know available capacity
+    # Also compute total cost, Q_tot etc.
+    # This is similar to what is_feasible does, but we re-derive here for convenience.
+    # We'll keep track of route loads and the current budget used.
+    route_loads = zeros(length(MMTs))
+    current_budget = p * length(MMTs) + f[VC]
+    total_Q = 0.0
+
+    for (r_idx, route) in enumerate(MMTs)
+        for (i, j) in route
+            current_budget += D[i, j]
+            if j <= n
+                route_loads[r_idx] += q[j]
+                total_Q += q[j]
+            end
+        end
+    end
+
+    # Try to insert each unvisited locality using a greedy approach
+    for loc in unvisited_localities
+        inserted = false
+        # Try each route
+        for (r_idx, route) in enumerate(MMTs)
+            node_seq = extract_node_seq(route)
+            route_load = route_loads[r_idx]
+
+            # Try each insertion position in [2 : end] for localities 
+            # (cannot insert before VC+n start or after VC+n end directly)
+            for insert_pos in 2:length(node_seq)
+                old_pre = node_seq[insert_pos-1]
+                old_succ = node_seq[insert_pos]
+
+                # If inserting loc: edges (old_pre, old_succ) replaced by (old_pre, loc) and (loc, old_succ)
+                delta_cost = D[old_pre, loc] + D[loc, old_succ] - D[old_pre, old_succ]
+                new_budget = current_budget + delta_cost
+                new_route_load = route_load + q[loc]
+                new_total_Q = total_Q + q[loc]
+
+                # Check feasibility: capacity, budget, and max quantity constraints
+                # Budget B, vehicle capacity Q[VC], and C[VC]
+                if new_budget <= B && new_route_load <= Q && new_total_Q <= C[VC]
+                    # Insert the locality
+                    insert!(node_seq, insert_pos, loc)
+                    new_route = generate_route(node_seq)
+                    MMTs[r_idx] = new_route
+
+                    # Update route load and global budget/Q
+                    route_loads[r_idx] = new_route_load
+                    current_budget = new_budget
+                    total_Q = new_total_Q
+
+                    inserted = true
+                    break
+                end
+            end
+            if inserted
+                break
+            end
+        end
+        # Move to next unvisited locality after insertion attempt
+    end
+end
